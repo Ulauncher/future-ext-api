@@ -1,2 +1,3 @@
 # future-ext-api
-API design ideation
+
+See `extension.py`.

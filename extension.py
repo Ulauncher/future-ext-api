@@ -21,6 +21,7 @@ To iterate over the API design, making it
 from ulauncher.api import Extension, RowResult
 from bravesearch.queries import BraveQueries
 from bravesearch.errors import SearchError
+from functools import partial
 
 
 class BraveExtension(Extension):
@@ -58,9 +59,6 @@ class BraveExtension(Extension):
             ]
 
         # Prompt the user to enter a search query
-        bs = BraveQueries(
-            self.preferences["search_api_key"], self.preferences["autosuggest_api_key"]
-        )
         if not input_text.strip():
             return [
                 RowResult(
@@ -73,7 +71,13 @@ class BraveExtension(Extension):
         # Show search suggestions as the user types
         try:
             return [
-                RowResult(compact=True, name=s, on_enter=None) for s in bs.search_suggestions(input_text)
+                RowResult(
+                    compact=True,
+                    name=s.name,
+                    description=s.snippet,
+                    on_enter=partial(self.search, s.url)
+                )
+                for s in self.bs().search_suggestions(input_text)
             ]
         except SearchError as e:
             return [e.to_row_result()]
@@ -86,6 +90,32 @@ class BraveExtension(Extension):
                 )
             ]
 
+    def search(self, url: str):
+        try:
+            return [
+                RowResult(
+                    compact=True,
+                    name=s.name,
+                    description=s.snippet,
+                    on_enter=None
+                )
+                for s in self.bs().search(url)
+            ]
+        except SearchError as e:
+            return [e.to_row_result()]
+        except Exception:
+            return [
+                RowResult(
+                    name="Error",
+                    description="An error occurred while searching.",
+                    keep_app_open=True,
+                )
+            ]
+    
+    def bs(self):
+        return BraveQueries(
+            self.preferences["search_api_key"], self.preferences["autosuggest_api_key"]
+        )
 
 if __name__ == "__main__":
     BraveExtension().run()

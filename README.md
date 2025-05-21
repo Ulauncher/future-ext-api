@@ -1,3 +1,3 @@
 # future-ext-api
 
-See `extension.py`.
+See `extension_example.py`.

@@ -18,9 +18,15 @@ To iterate over the API design, making it
 - future-proof (i.e. tile view for images, etc.)
 """
 
-from ulauncher.api import Extension, RowResult, RowResultContainer, ImageResultContainer
-from bravesearch.queries import BraveQueries
-from bravesearch.errors import SearchError
+from api_example import (
+    Extension,
+    Results,
+    ImageResult,
+    RowResult,
+    RowResultContainer,
+    ImageResultContainer,
+)
+from bravesearch import BraveQueries, SearchError
 from functools import partial
 
 
@@ -73,9 +79,8 @@ class BraveExtension(Extension):
             return [
                 RowResult(
                     compact=True,
-                    name=s.name,
-                    description=s.snippet,
-                    on_enter=lambda: self.search(s.url),
+                    name=s,
+                    on_enter=lambda: self.search(s),
                 )
                 for s in self.bs().search_suggestions(input_text)
             ]
@@ -90,13 +95,11 @@ class BraveExtension(Extension):
                 )
             ]
 
-    def search(self, url: str, offset=0, limit=10):
-        results = Results(
-            navigation=True,
-        )
+    def search(self, query: str, offset=0, limit=10):
+        results = Results()
         try:
-            search_res = self.bs().search(url)
-            if search_res.empty:
+            brave_res = self.bs().search(query)
+            if brave_res.has_results is False:
                 return [
                     RowResult(
                         name="No results found",
@@ -104,7 +107,7 @@ class BraveExtension(Extension):
                         keep_app_open=True,
                     )
                 ]
-            for s in search_res.pages:
+            for s in brave_res.pages:
                 results.items.append(
                     RowResult(
                         icon=s.domain_icon_url,
@@ -113,12 +116,12 @@ class BraveExtension(Extension):
                         on_enter=partial(self.open_url, s.url),
                     )
                 )
-            if search_res.discussions:
+            if brave_res.discussions:
                 # create a container for discussion results
                 discussion_container = RowResultContainer(
                     show_header=True, header_title="Discussions"
                 )
-                for s in search_res.discussions:
+                for s in brave_res.discussions:
                     discussion_container.items.append(
                         RowResult(
                             compact=True,
@@ -129,16 +132,16 @@ class BraveExtension(Extension):
                         )
                     )
                 results.items.append(discussion_container)
-            if search_res.images:
+            if brave_res.images:
                 image_container = ImageResultContainer(
                     show_header=True, header_title="Images"
                 )
-                for s in search_res.images:
+                for s in brave_res.images:
                     image_container.items.append(
                         ImageResult(  # can optionally accept width and height
                             image=s.image_url,
-                            name=s.domain_name,
-                            description=s.snippet,
+                            name=s.name,
+                            description=s.description,
                             on_enter=partial(self.open_url, s.url),
                         )
                     )

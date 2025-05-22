@@ -147,10 +147,7 @@ class BraveExtension(Extension):
                             name=s.name,
                             description=s.description,
                             on_enter=partial(OpenUrlAction, s.url),
-                            on_alt_enter=partial(
-                                self.on_image_options,
-                                s.image_url
-                            )
+                            on_alt_enter=partial(self.on_image_options, s.image_url),
                         )
                     )
                 results.items.append(image_container)

@@ -2,24 +2,6 @@ from typing import Callable
 from dataclasses import dataclass, field
 
 
-class Extension:
-    preferences: dict[str, str]
-
-    def __init__(self) -> None:
-        self.preferences = {}
-
-    def set_query_modifiers(
-        self, modifiers: dict[str, str], default_key: str | None = None
-    ) -> None:
-        raise NotImplementedError()
-
-    def run(self) -> None:
-        raise NotImplementedError()
-
-    def on_input(self, input_text: str, trigger_id: str):
-        raise NotImplementedError()
-
-
 # Instead of using dataclass it could also
 # subclass BaseDataClass from ulauncher.utils.
 # These classes should not include any logic except validation.
@@ -41,6 +23,16 @@ class ImageResult:
     description: str | None = None
     on_enter: "OnUserActionType" = None
     on_alt_enter: "OnUserActionType" = None
+
+
+@dataclass
+class DetailResult:
+    markdown: str  # Markdown support with a limited set of features
+    show_header: bool = False
+    header_title: str = ""
+    on_enter: "OnUserActionType" = None
+    on_alt_enter: "OnUserActionType" = None
+    keep_app_open: bool = False
 
 
 @dataclass
@@ -75,14 +67,20 @@ class Navigation:
 
 @dataclass
 class Results:
-    items: list[RowResult | RowResultContainer | ImageResultContainer] = field(
-        default_factory=list
+    items: list[RowResult | RowResultContainer | ImageResultContainer | DetailResult] = (
+        field(default_factory=list)
     )
     navigation: Navigation | None = None
 
 
 class Action:
-    pass
+    """
+    Base class for actions that can be performed on a result.
+    All subclasses must implement the `to_dict` method.
+    """
+
+    def to_dict(self) -> dict:
+        raise NotImplementedError()
 
 
 class OpenUrlAction(Action):
@@ -94,3 +92,27 @@ class OpenUrlAction(Action):
 
 
 OnUserActionType = Callable[[], list[RowResult] | Results | Action | None] | None
+
+
+class Extension:
+    preferences: dict[str, str]
+
+    def __init__(self) -> None:
+        self.preferences = {}
+
+    def set_query_modifiers(
+        self, modifiers: dict[str, str], default_key: str | None = None
+    ) -> None:
+        raise NotImplementedError()
+
+    def run(self) -> None:
+        raise NotImplementedError()
+
+    def on_input(
+        self, input_text: str, trigger_id: str
+    ) -> list[RowResult] | Results | Action | None:
+        """
+        list[RowResult] in the return type is for backward compatibility and convenience
+        when needed to return a simple list of results.
+        """
+        raise NotImplementedError()

@@ -1,5 +1,5 @@
 from typing import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 class Extension:
@@ -20,10 +20,14 @@ class Extension:
         raise NotImplementedError()
 
 
+# Instead of using dataclass it could also
+# subclass BaseDataClass from ulauncher.utils.
+# These classes should not include any logic except validation.
 @dataclass
 class RowResult:
     name: str
     on_enter: "OnUserActionType" = None
+    on_alt_enter: "OnUserActionType" = None
     icon: str | None = None
     description: str | None = None
     compact: bool = False
@@ -36,18 +40,19 @@ class ImageResult:
     name: str
     description: str | None = None
     on_enter: "OnUserActionType" = None
+    on_alt_enter: "OnUserActionType" = None
 
 
 @dataclass
 class RowResultContainer:
-    items: list[RowResult]
+    items: list[RowResult] = field(default_factory=list)
     show_header: bool = False
     header_title: str = ""
 
 
 @dataclass
 class ImageResultContainer:
-    items: list["ImageResult"]
+    items: list["ImageResult"] = field(default_factory=list)
     show_header: bool = False
     header_title: str = ""
 
@@ -70,8 +75,22 @@ class Navigation:
 
 @dataclass
 class Results:
-    items: list[RowResult | RowResultContainer | ImageResultContainer] | None = None
+    items: list[RowResult | RowResultContainer | ImageResultContainer] = field(
+        default_factory=list
+    )
     navigation: Navigation | None = None
 
 
-OnUserActionType = Callable[[], list[RowResult] | Results | None] | None
+class Action:
+    pass
+
+
+class OpenUrlAction(Action):
+    def __init__(self, url: str) -> None:
+        self.url = url
+
+    def to_dict(self) -> dict:
+        raise NotImplementedError()
+
+
+OnUserActionType = Callable[[], list[RowResult] | Results | Action | None] | None

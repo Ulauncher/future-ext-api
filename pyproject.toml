@@ -6,3 +6,6 @@ line-length = 90
 
 [tool.pyright]
 pythonVersion = "3.10"
+reportMissingParameterType = true
+reportMissingTypeStubs = true
+reportMissingReturnType = true

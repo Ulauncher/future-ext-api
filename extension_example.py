@@ -1,18 +1,19 @@
 """
-Example of Ulauncher extension code using imaginary extension API.
-Implements a search engine using Brave Search.
+Example of Ulauncher extension API and extension code.
+The extension is a search engine via Brave Search API.
 
 UI WIREFRAMES
 =============
 
 https://excalidraw.com/#json=BvFSaU23gumXNv3MYrhOU,_oZwH481BzZERrLis8l7gQ
-They show a potential evolution of the UI and functionality of Ulauncher extensions.
+Wireframes show a potential evolution of the UI and functionality of
+Ulauncher extensions.
 
 
 PURPOSE OF THIS CODE
 ====================
 
-To iterate over the API design, making it
+Is to iterate over the API design, making it
 - easy to start using (i.e. low boilerplate code for a minimal extension)
 - intuitive and consistent
 - future-proof (i.e. tile view for images, etc.)
@@ -20,6 +21,9 @@ To iterate over the API design, making it
 
 from api_example import (
     Extension,
+    NavItem,
+    Navigation,
+    OpenUrlAction,
     Results,
     ImageResult,
     RowResult,
@@ -95,9 +99,9 @@ class BraveExtension(Extension):
                 )
             ]
 
-    def search(self, query: str, offset=0, limit=10):
-        results = Results()
+    def search(self, query: str, offset: int = 0, limit: int = 10):
         try:
+            results = Results()
             brave_res = self.bs().search(query)
             if brave_res.has_results is False:
                 return [
@@ -113,7 +117,7 @@ class BraveExtension(Extension):
                         icon=s.domain_icon_url,
                         name=s.name,
                         description=s.snippet,
-                        on_enter=partial(self.open_url, s.url),
+                        on_enter=partial(OpenUrlAction, s.url),
                     )
                 )
             if brave_res.discussions:
@@ -128,7 +132,7 @@ class BraveExtension(Extension):
                             icon=s.domain_icon_url,
                             name=s.name,
                             description=s.snippet,
-                            on_enter=partial(self.open_url, s.url),
+                            on_enter=partial(OpenUrlAction, s.url),
                         )
                     )
                 results.items.append(discussion_container)
@@ -142,10 +146,25 @@ class BraveExtension(Extension):
                             image=s.image_url,
                             name=s.name,
                             description=s.description,
-                            on_enter=partial(self.open_url, s.url),
+                            on_enter=partial(OpenUrlAction, s.url),
+                            on_alt_enter=partial(
+                                self.on_image_options,
+                                s.image_url
+                            )
                         )
                     )
                 results.items.append(image_container)
+
+            # Set navigation config
+            total_items = (
+                len(results.items) + len(brave_res.discussions) + len(brave_res.images)
+            )
+            results.navigation = Navigation(
+                back=NavItem(name="go back", enabled=offset > 0),
+                forward=NavItem(name="see more", enabled=total_items == limit),
+                enter=NavItem(name="open in browser"),
+                alt_enter=NavItem(name="options"),
+            )
 
             return results
         except SearchError as e:
@@ -158,6 +177,12 @@ class BraveExtension(Extension):
                     keep_app_open=True,
                 )
             ]
+
+    def on_image_options(self, image_url: str):
+        """
+        Show options for the image, such as saving it to Downloads.
+        """
+        raise NotImplementedError()
 
     def bs(self):
         return BraveQueries(

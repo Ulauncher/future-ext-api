@@ -17,6 +17,25 @@ Is to iterate over the API design, making it
 - easy to start using (i.e. low boilerplate code for a minimal extension)
 - intuitive and consistent
 - future-proof (i.e. tile view for images, etc.)
+
+FUTURE EXTENSION FEATURES
+=========================
+
+feature                   when                         UI                                    use cases
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+result actions            after v6                     a bar at the bottom, cicle through    plenty
+^                                                      options by Tab key
+image results             after v6                     as tiles with images and 2 lines      emoji picker, web search, file search
+detailed view             after v6                     one or more items of varying height   file details, LLM output, word definition
+pagination                after v6                     via result actions                    search results, file browser
+mixed results             when we see demand           as on the wireframes                  searching web
+dividers                  when we see demand           as on the wireframes                  for mixed results,
+^                                                                                            search results from multiple files
+keywordless activation    "how" is more unclear        just type the query                   unit conversion, mixed results from
+^                                                                                            multiple extensions
+query modifiers           maybe. need more use cases   TBD. Must be more intuitive and
+^                                                      keyboard-friendly
+
 """
 
 from api_example import (

@@ -29,8 +29,10 @@ class OpenUrlAction(Action):
 @dataclass
 class Result:
     name: str
-    # first Action in the list is the default action, activated by Enter key
-    # if empty, no action will be performed on Enter key
+    # First Action in the list is the default action, activated by Enter key.
+    # If empty, no action will be performed on Enter key.
+    # For compatibility with current ExtensionResultItem
+    # we can on_alt_enter as a second action with label "More Actions"
     actions: list[Action | object] = field(default_factory=list)
     icon: str | None = None
     description: str | None = None

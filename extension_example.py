@@ -5,7 +5,8 @@ The extension is a search engine via Brave Search API.
 UI WIREFRAMES
 =============
 
-https://excalidraw.com/#json=BvFSaU23gumXNv3MYrhOU,_oZwH481BzZERrLis8l7gQ
+🖼 https://excalidraw.com/#json=VLwqQiG06HqddDr1nCFvk,5IlaTfPYfIWWyREPc8oPmw
+
 Wireframes show a potential evolution of the UI and functionality of
 Ulauncher extensions.
 
@@ -22,7 +23,7 @@ FUTURE EXTENSION FEATURES
 =========================
 
 feature                   when                         UI                                    use cases
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 result actions            after v6                     a bar at the bottom, cicle through    plenty
 ^                                                      options by Tab key
 image results             after v6                     as tiles with images and 2 lines      emoji picker, web search, file search
@@ -33,24 +34,42 @@ dividers                  when we see demand           as on the wireframes     
 ^                                                                                            search results from multiple files
 keywordless activation    "how" is more unclear        just type the query                   unit conversion, mixed results from
 ^                                                                                            multiple extensions
-query modifiers           maybe. need more use cases   TBD. Must be more intuitive and
-^                                                      keyboard-friendly
-
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 """
 
 from api_example import (
     Extension,
-    NavItem,
-    Navigation,
+    Action,
     OpenUrlAction,
     Results,
     ImageResult,
-    RowResult,
+    Result,
     RowResultContainer,
     ImageResultContainer,
 )
 from bravesearch import BraveQueries, SearchError
-from functools import partial
+
+
+class RunQueryAction(Action):
+    type = "run_query"
+    label = "Run Query"
+    query: str
+
+    def __init__(self, query: str):
+        super().__init__()
+        self.query = query
+
+
+class SaveImageAction(Action):
+    type = "save_image"
+    label = "Save Image"
+    image_url: str
+    filename: str
+
+    def __init__(self, image_url: str, filename: str):
+        super().__init__()
+        self.image_url = image_url
+        self.filename = filename
 
 
 class BraveExtension(Extension):
@@ -80,30 +99,28 @@ class BraveExtension(Extension):
             or not self.preferences["autosuggest_api_key"]
         ):
             return [
-                RowResult(
+                Result(
                     name="Error",
                     description="Please set your API keys in the preferences.",
-                    keep_app_open=True,
                 )
             ]
 
         # Prompt the user to enter a search query
         if not input_text.strip():
             return [
-                RowResult(
+                Result(
                     name="Brave Search",
                     description="Type your search query...",
-                    keep_app_open=True,
                 )
             ]
 
         # Show search suggestions as the user types
         try:
             return [
-                RowResult(
+                Result(
                     compact=True,
                     name=s,
-                    on_enter=lambda: self.search(s),
+                    actions=[RunQueryAction(s)],
                 )
                 for s in self.bs().search_suggestions(input_text)
             ]
@@ -111,32 +128,40 @@ class BraveExtension(Extension):
             return [e.to_row_result()]
         except Exception:
             return [
-                RowResult(
+                Result(
                     name="Error",
                     description="An error occurred while fetching suggestions.",
-                    keep_app_open=True,
                 )
             ]
 
-    def search(self, query: str, offset: int = 0, limit: int = 10):
+    def on_action(self, action: dict):
+        if action.get("type") == "run_query":
+            run_query_action = RunQueryAction(**action)
+            return self.search(run_query_action.query)
+        elif isinstance(action, SaveImageAction):
+            # save to ~/Pictures
+            pass
+
+    def search(self, query: str):
         try:
             results = Results()
+            results.auto_pagination = True
+
             brave_res = self.bs().search(query)
             if brave_res.has_results is False:
                 return [
-                    RowResult(
+                    Result(
                         name="No results found",
                         description="Try a different query.",
-                        keep_app_open=True,
                     )
                 ]
             for s in brave_res.pages:
                 results.items.append(
-                    RowResult(
+                    Result(
                         icon=s.domain_icon_url,
                         name=s.name,
                         description=s.snippet,
-                        on_enter=partial(OpenUrlAction, s.url),
+                        actions=[OpenUrlAction(s.url)],
                     )
                 )
             if brave_res.discussions:
@@ -146,12 +171,12 @@ class BraveExtension(Extension):
                 )
                 for s in brave_res.discussions:
                     discussion_container.items.append(
-                        RowResult(
+                        Result(
                             compact=True,
                             icon=s.domain_icon_url,
                             name=s.name,
                             description=s.snippet,
-                            on_enter=partial(OpenUrlAction, s.url),
+                            actions=[OpenUrlAction(s.url)],
                         )
                     )
                 results.items.append(discussion_container)
@@ -165,40 +190,24 @@ class BraveExtension(Extension):
                             image=s.image_url,
                             name=s.name,
                             description=s.description,
-                            on_enter=partial(OpenUrlAction, s.url),
-                            on_alt_enter=partial(self.on_image_options, s.image_url),
+                            actions=[
+                                OpenUrlAction(s.url),
+                                SaveImageAction(s.image_url, s.name),
+                            ],
                         )
                     )
                 results.items.append(image_container)
-
-            # Set navigation config
-            total_items = (
-                len(results.items) + len(brave_res.discussions) + len(brave_res.images)
-            )
-            results.navigation = Navigation(
-                back=NavItem(name="go back", enabled=offset > 0),
-                forward=NavItem(name="see more", enabled=total_items == limit),
-                enter=NavItem(name="open in browser"),
-                alt_enter=NavItem(name="options"),
-            )
 
             return results
         except SearchError as e:
             return [e.to_row_result()]
         except Exception:
             return [
-                RowResult(
+                Result(
                     name="Error",
                     description="An error occurred while searching.",
-                    keep_app_open=True,
                 )
             ]
-
-    def on_image_options(self, image_url: str):
-        """
-        Show options for the image, such as saving it to Downloads.
-        """
-        raise NotImplementedError()
 
     def bs(self):
         return BraveQueries(

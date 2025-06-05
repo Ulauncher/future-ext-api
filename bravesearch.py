@@ -1,4 +1,4 @@
-from extension_example import RowResult
+from extension_example import Result
 
 
 class WebPageResult:
@@ -40,8 +40,8 @@ class SearchError(Exception):
         super().__init__(message)
         self.message = message
 
-    def to_row_result(self) -> RowResult:
-        return RowResult(
+    def to_row_result(self) -> Result:
+        return Result(
             name="Error",
             description=self.message,
             keep_app_open=True,

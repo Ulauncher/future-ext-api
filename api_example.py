@@ -1,4 +1,3 @@
-from typing import Callable
 from dataclasses import dataclass, field
 
 
@@ -6,14 +5,36 @@ from dataclasses import dataclass, field
 # subclass BaseDataClass from ulauncher.utils.
 # These classes should not include any logic except validation.
 @dataclass
-class RowResult:
+class Action:
+    """
+    Base class for actions that can be performed on a result.
+    """
+
+    type: str = "default"
+    label: str = "Open"  # Default label for the action rendered in the UI
+
+
+class OpenUrlAction(Action):
+    type = "open_url"
+    label = "Open In Browser"
+    url: str
+    keep_app_open: bool = False
+
+    def __init__(self, url: str, keep_app_open: bool = False) -> None:
+        super().__init__()
+        self.url = url
+        self.keep_app_open = keep_app_open
+
+
+@dataclass
+class Result:
     name: str
-    on_enter: "OnUserActionType" = None
-    on_alt_enter: "OnUserActionType" = None
+    # first Action in the list is the default action, activated by Enter key
+    # if empty, no action will be performed on Enter key
+    actions: list[Action | object] = field(default_factory=list)
     icon: str | None = None
     description: str | None = None
     compact: bool = False
-    keep_app_open: bool = False
 
 
 @dataclass
@@ -21,23 +42,18 @@ class ImageResult:
     image: str
     name: str
     description: str | None = None
-    on_enter: "OnUserActionType" = None
-    on_alt_enter: "OnUserActionType" = None
+    actions: list[Action | object] = field(default_factory=list)
 
 
 @dataclass
 class DetailResult:
     markdown: str  # Markdown support with a limited set of features
-    show_header: bool = False
-    header_title: str = ""
-    on_enter: "OnUserActionType" = None
-    on_alt_enter: "OnUserActionType" = None
-    keep_app_open: bool = False
+    actions: list[Action | object] = field(default_factory=list)
 
 
 @dataclass
 class RowResultContainer:
-    items: list[RowResult] = field(default_factory=list)
+    items: list[Result] = field(default_factory=list)
     show_header: bool = False
     header_title: str = ""
 
@@ -50,48 +66,14 @@ class ImageResultContainer:
 
 
 @dataclass
-class NavItem:
-    name: str | None = None
-    enabled: bool = True
-
-
-@dataclass
-class Navigation:
-    "None means Ulauncher will decide what to show"
-
-    back: NavItem | None
-    forward: NavItem | None
-    enter: NavItem | None
-    alt_enter: NavItem | None
-
-
-@dataclass
 class Results:
-    items: list[RowResult | RowResultContainer | ImageResultContainer | DetailResult] = (
+    items: list[Result | RowResultContainer | ImageResultContainer | DetailResult] = (
         field(default_factory=list)
     )
-    navigation: Navigation | None = None
 
-
-class Action:
-    """
-    Base class for actions that can be performed on a result.
-    All subclasses must implement the `to_dict` method.
-    """
-
-    def to_dict(self) -> dict:
-        raise NotImplementedError()
-
-
-class OpenUrlAction(Action):
-    def __init__(self, url: str) -> None:
-        self.url = url
-
-    def to_dict(self) -> dict:
-        raise NotImplementedError()
-
-
-OnUserActionType = Callable[[], list[RowResult] | Results | Action | None] | None
+    # just an idea. Could help developers to enable pagination without coding it
+    auto_pagination: bool = False
+    items_per_page: int = 10
 
 
 class Extension:
@@ -110,9 +92,16 @@ class Extension:
 
     def on_input(
         self, input_text: str, trigger_id: str
-    ) -> list[RowResult] | Results | Action | None:
+    ) -> list[Result] | Results | Action | None:
         """
         list[RowResult] in the return type is for backward compatibility and convenience
         when needed to return a simple list of results.
         """
         raise NotImplementedError()
+
+    # TODO: action was dataclass in Result but now it's a dict. Need to find a consistent way
+    def on_action(self, action: dict) -> list[Result] | Results | Action | None:
+        """
+        Extensions should implement this method to handle actions
+        """
+        pass
